@@ -44,9 +44,7 @@ class Number(Card):
             return False
         elif isinstance(other, SkullKing):
             return False
-        elif isinstance(other, Escape):
-            return True
-        elif isinstance(other, Loot):
+        elif isinstance(other, Escape) or isinstance(other, Loot):
             return True
         elif isinstance(other, Kraken):
             return True
@@ -67,22 +65,20 @@ class Pirate(Card):
         if isinstance(other, Number):
             return True
         elif isinstance(other, Pirate):
-            return True if self.trick_order < other.trick_order else False
+            return self.trick_order < other.trick_order
         elif isinstance(other, Mermaid):
             return True
         elif isinstance(other, SkullKing):
             return False
-        elif isinstance(other, Escape):
-            return True
-        elif isinstance(other, Loot):
+        elif isinstance(other, Escape) or isinstance(other, Loot):
             return True
         elif isinstance(other, Kraken):
             return True
         elif isinstance(other, WhiteWhale):
-            return True if self.trick_order < other.trick_order else False
+            return self.trick_order < other.trick_order
         elif isinstance(other, Tigress):
             if other.as_pirate:
-                return True if self.trick_order < other.trick_order else False
+                return self.trick_order < other.trick_order
             else:
                 return True
         else:
@@ -100,17 +96,15 @@ class Mermaid(Card):
         elif isinstance(other, Pirate):
             return False
         elif isinstance(other, Mermaid):
-            return True if self.trick_order < other.trick_order else False
+            return self.trick_order < other.trick_order
         elif isinstance(other, SkullKing):
             return False
-        elif isinstance(other, Escape):
-            return True
-        elif isinstance(other, Loot):
+        elif isinstance(other, Escape) or isinstance(other, Loot):
             return True
         elif isinstance(other, Kraken):
             return True
         elif isinstance(other, WhiteWhale):
-            return True if self.trick_order < other.trick_order else False
+            return self.trick_order < other.trick_order
         elif isinstance(other, Tigress):
             if other.as_pirate:
                 return False
@@ -134,14 +128,12 @@ class SkullKing(Card):
             return False
         elif isinstance(other, SkullKing):
             raise RuntimeError("Cannot compare two skull king cards")
-        elif isinstance(other, Escape):
-            return True
-        elif isinstance(other, Loot):
+        elif isinstance(other, Escape) or isinstance(other, Loot):
             return True
         elif isinstance(other, Kraken):
             return True
         elif isinstance(other, WhiteWhale):
-            return True if self.trick_order < other.trick_order else False
+            return self.trick_order < other.trick_order
         elif isinstance(other, Tigress):
             return True
         else:
@@ -159,19 +151,17 @@ class Escape(Card):
             return False
         elif isinstance(other, SkullKing):
             return False
-        elif isinstance(other, Escape):
-            return True if self.trick_order < other.trick_order else False
-        elif isinstance(other, Loot):
-            return True if self.trick_order < other.trick_order else False
+        elif isinstance(other, Escape) or isinstance(other, Loot):
+            return self.trick_order < other.trick_order
         elif isinstance(other, Kraken):
             return False
         elif isinstance(other, WhiteWhale):
-            return True if self.trick_order < other.trick_order else False
+            return self.trick_order < other.trick_order
         elif isinstance(other, Tigress):
             if other.as_pirate:
                 return False
             else:
-                return True if self.trick_order < other.trick_order else False
+                return self.trick_order < other.trick_order
         else:
             raise NotImplementedError
 
@@ -190,32 +180,59 @@ class Loot(Card):
             return False
         elif isinstance(other, SkullKing):
             return False
-        elif isinstance(other, Escape):
-            return True if self.trick_order < other.trick_order else False
-        elif isinstance(other, Loot):
-            return True if self.trick_order < other.trick_order else False
+        elif isinstance(other, Escape) or isinstance(other, Loot):
+            return self.trick_order < other.trick_order
         elif isinstance(other, Kraken):
             return False
         elif isinstance(other, WhiteWhale):
-            return True if self.trick_order < other.trick_order else False
+            return self.trick_order < other.trick_order
         elif isinstance(other, Tigress):
             if other.as_pirate:
                 return False
             else:
-                return True if self.trick_order < other.trick_order else False
+                return self.trick_order < other.trick_order
         else:
             raise NotImplementedError
 
 class Kraken(Card):
-    pass
+    def __gt__(self, other):
+        super().__gt__(other)
+        return False
 
 class WhiteWhale(Card):
-    pass
+    def __gt__(self, other):
+        super().__gt__(other)
+        return False
 
 class Tigress(Card):
     def __init__(self, id, name):
         super().__init__(id, name)
         self.as_pirate = True
+
+    def __gt__(self, other):
+        super().__gt__(other)
+
+        if isinstance(other, Number):
+            return True if self.as_pirate else False
+        elif isinstance(other, Pirate):
+            return True if self.as_pirate and self.trick_order < other.trick_order else False
+        elif isinstance(other, Mermaid):
+            return True if self.as_pirate else False
+        elif isinstance(other, SkullKing):
+            return False
+        elif isinstance(other, Escape) or isinstance(other, Loot):
+            if self.as_pirate:
+                return True
+            else:
+                return self.trick_order < other.trick_order
+        elif isinstance(other, Kraken):
+            return True
+        elif isinstance(other, WhiteWhale):
+            return self.trick_order < other.trick_order
+        elif isinstance(other, Tigress):
+            raise RuntimeError("Cannot compare two Tigresses")
+        else:
+            raise NotImplementedError
 
     def use_as_pirate(self, as_pirate):
         self.as_pirate = as_pirate

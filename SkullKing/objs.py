@@ -1,3 +1,4 @@
+from typing import List
 import random
 from .cards import *
 
@@ -68,7 +69,7 @@ class Deck:
 
 class Trick:
     def __init__(self) -> None:
-        self.cards = []
+        self.cards: List[Card] = []
 
     @property
     def bonus_points(self) -> float:
@@ -88,28 +89,43 @@ class Trick:
         trump_color = ""
 
         for player_id, card in self.cards:
-            
+            pass
 
 
 class Player:
     def __init__(self, id: int) -> None:
+        # Per game properties
         self.id = id
         self.score = 0
+
+        # Per round properties
         self.bet = -1
         self.hand = Hand()
-        self.tricks = []
+        self.tricks: List[Trick] = []
 
-    def set_bet(self, bet: int):
-        self.bet = bet
+        # TODO: future properties
+        self.loot_with = -1  # Flag to indicate if a player has loot with anyone
+        self.wager = 0  # Ability to wager with Rascal of Roatan
 
-    def win_trick(self, trick: Trick):
-        pass
-
-    def compute_score(self, round_number: int):
+    def compute_score_for_round(self, round_number: int):
+        # Special case: bet 0
         if self.bet == 0:
             if len(self.tricks) == 0:
                 self.score += round_number*10
             else:
                 self.score -= round_number*10
         else:
-            pass
+            if len(self.tricks) == self.bet:
+                self.score += 20*self.bet  # Score 20 points per trick won
+                # Add bonus points, if any
+                for trick in self.tricks:
+                    self.score += trick.bonus_points
+            else:
+                diff = abs(self.bet - len(self.tricks))
+                self.score -= diff*10  # Lose 10 points per trick off from `bet`
+
+    def round_cleanup(self):
+        """Cleanup intermediates between rounds"""
+        self.hand = Hand()
+        self.tricks = []
+        self.bet = -1
