@@ -1,5 +1,5 @@
 import gym
-from gym.spaces import Discrete, Box
+from gym import spaces
 import numpy as np
 
 from .objs import Deck, Player, Trick
@@ -24,8 +24,9 @@ class SkullKingEnv(gym.Env):
         self.total_cards = len(self.deck)
 
         # Action space is the total number of cards in the deck
-        # Each action corresponds to a single card
-        self.action_space = Discrete(self.total_cards)
+        # Each action corresponds to a single bet or a single card.
+        # Bets can range from [0, 10] for a total of 11 possible bet actions.
+        self.action_space = spaces.Discrete(11 + self.total_cards)
 
         # Construct the observation space
         # Consists of:
@@ -37,9 +38,10 @@ class SkullKingEnv(gym.Env):
         self.reset()
 
     def reset(self) -> None:
-        pass
+        return self.observation
 
-    def _get_obs(self):
+    @property
+    def observation(self):
         pass
 
     def legal_actions(self):
@@ -55,4 +57,4 @@ class SkullKingEnv(gym.Env):
             3. If the round is over, determine who won the trick and prompt them to play next.
         """
         pass
-        
+
