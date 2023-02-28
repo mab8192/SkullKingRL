@@ -12,7 +12,7 @@ class Card():
         self.id = id
         self.order = order
         self.name = name
-        
+
 class Tempura(Card):
     def __init__(self, id, order, name):
         super(Tempura, self).__init__(id, order, name)
@@ -26,7 +26,7 @@ class Sashimi(Card):
         self.colour = 'green'
         self.type = 'sashimi'
         self.symbol = 'SAS'
-        
+
 class Dumpling(Card):
     def __init__(self, id, order, name):
         super(Dumpling, self).__init__(id, order, name)
@@ -41,7 +41,7 @@ class Maki(Card):
         self.type = 'maki'
         self.value = value
         self.symbol = f'MA{value}'
-        
+
 class Nigiri(Card):
     def __init__(self, id, order, name, value):
         super(Nigiri, self).__init__(id, order, name)
@@ -67,7 +67,7 @@ class Wasabi(Card):
         self.colour = 'yellow'
         self.type = 'wasabi'
         self.played_upon = False
-    
+
     @property
     def symbol(self):
         return f"WA{'X' if self.played_upon else '-'}"
@@ -78,13 +78,13 @@ class Chopsticks(Card):
         self.colour = 'lightblue'
         self.type = 'chopsticks'
         self.symbol = f'CHO'
-        
-       
+
+
 class Deck():
     def __init__(self, contents):
         self.contents = contents
         self.create()
-    
+
     def shuffle(self):
         random.shuffle(self.cards)
 
@@ -93,7 +93,7 @@ class Deck():
         for x in range(n):
             drawn.append(self.cards.pop())
         return drawn
-    
+
     def add(self, cards):
         for card in cards:
             self.cards.append(card)
@@ -108,50 +108,50 @@ class Deck():
                 x['info']['id'] = card_id
                 self.add([x['card'](**x['info'])])
                 card_id += 1
-                
+
         self.shuffle()
-                
+
     def size(self):
         return len(self.cards)
 
 
 class Hand():
     def __init__(self):
-        self.cards = []  
-    
+        self.cards = []
+
     def add(self, cards):
         for card in cards:
             self.cards.append(card)
-    
+
     def size(self):
         return len(self.cards)
-    
+
     def pick(self, name):
         for i, c in enumerate(self.cards):
             if c.name == name:
                 self.cards.pop(i)
                 return c
-        
-                
+
+
 class Discard():
     def __init__(self):
-        self.cards = []  
-    
+        self.cards = []
+
     def add(self, cards):
         for card in cards:
             self.cards.append(card)
-    
+
     def size(self):
         return len(self.cards)
-    
+
 class Position():
     def __init__(self):
-        self.cards = []  
-    
+        self.cards = []
+
     def add(self, cards):
         for card in cards:
             self.cards.append(card)
-    
+
     def size(self):
         return len(self.cards)
 
