@@ -45,16 +45,14 @@ class SkullKingEnv(gym.Env):
         pass
 
     def legal_actions(self):
-        """Return a mask for which moves are legal for each player"""
+        """Return a mask for which moves are legal for the current player"""
         pass
 
     def step(self, action):
         """
-        A single step is a single agent playing a single card.
-        When a player plays a card:
-            1. Check if the round is over.
-            2. If the round is not over, continue play
-            3. If the round is over, determine who won the trick and prompt them to play next.
+        Take the given action for the current player.
+        Check if the trick is over. if so set current player to the winner. If not, advance current_player
+        Check if the round is over. If so, score points and distribute rewards.
         """
         pass
 
