@@ -1,4 +1,4 @@
-
+import logging
 
 import os
 import sys
@@ -11,9 +11,7 @@ from mpi4py import MPI
 
 from shutil import rmtree
 from stable_baselines3 import PPO
-from stable_baselines3.common.policies import MlpPolicy
 
-from utils.register import get_network_arch
 
 import config
 
@@ -33,10 +31,9 @@ def write_results(players, game, games, episode_length):
 
 
 def load_model(env, name):
-
     filename = os.path.join(config.MODELDIR, env.name, name)
     if os.path.exists(filename):
-        print(f'Loading {name}')
+        logging.info(f'Loading {name}')
         cont = True
         while cont:
             try:
@@ -44,7 +41,7 @@ def load_model(env, name):
                 cont = False
             except Exception as e:
                 time.sleep(5)
-                print(e)
+                logging.error(e)
 
     elif name == 'base.zip':
         cont = True
@@ -53,8 +50,8 @@ def load_model(env, name):
 
                 rank = MPI.COMM_WORLD.Get_rank()
                 if rank == 0:
-                    ppo_model = PPO(get_network_arch(env.name), env=env)
-                    print(f'Saving base.zip PPO model...')
+                    ppo_model = PPO("MlpPolicy", env=env)
+                    logging.info(f'Saving base.zip PPO model...')
                     ppo_model.save(os.path.join(
                         config.MODELDIR, env.name, 'base.zip'))
                 else:
@@ -67,7 +64,7 @@ def load_model(env, name):
                 sys.exit(
                     f'Check zoo/{env.name}/ exists and read/write permission granted to user')
             except Exception as e:
-                print(e)
+                logging.error(e)
                 time.sleep(2)
 
     else:
@@ -77,8 +74,7 @@ def load_model(env, name):
 
 
 def load_all_models(env):
-    modellist = [f for f in os.listdir(os.path.join(
-        config.MODELDIR, env.name)) if f.startswith("_model")]
+    modellist = [f for f in os.listdir(os.path.join(config.MODELDIR, env.name)) if f.startswith("_model")]
     modellist.sort()
     models = [load_model(env, 'base.zip')]
     for model_name in modellist:
@@ -129,8 +125,8 @@ def reset_logs(model_dir):
         open(os.path.join(config.LOGDIR, 'log.txt'), 'a').close()
 
     except Exception as e:
-        print(e)
-        print('Reset logs failed')
+        logging.error(e)
+        logging.error('Reset logs failed')
 
 
 def reset_models(model_dir):
@@ -140,5 +136,5 @@ def reset_models(model_dir):
         for f in filelist:
             os.remove(os.path.join(model_dir, f))
     except Exception as e:
-        print(e)
-        print('Reset models failed')
+        logging.error(e)
+        logging.error('Reset models failed')

@@ -1,5 +1,5 @@
 # docker-compose exec app python3 test.py -d -g 1 -a base base human -e butterfly
-
+import logging
 import config
 from utils.agents import Agent
 from utils.register import get_environment
@@ -7,12 +7,6 @@ from utils.files import load_model, write_results
 from stable_baselines3.common.utils import set_random_seed
 import argparse
 import random
-import tensorflow as tf
-import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
-tf.get_logger().setLevel('INFO')
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
 def main(args):
@@ -52,7 +46,7 @@ def main(args):
         total_rewards[agent_obj.id] = 0
 
     # play games
-    print(f'\nPlaying {args.games} games...')
+    logging.debug(f'\nPlaying {args.games} games...')
     for game in range(args.games):
         players = agents[:]
 
@@ -63,17 +57,17 @@ def main(args):
         done = False
 
         for i, p in enumerate(players):
-            print(f'Player {i+1} = {p.name}')
+            logging.debug(f'Player {i+1} = {p.name}')
 
         while not done:
 
             current_player = players[env.current_player_num]
             env.render()
-            print(f'\nCurrent player name: {current_player.name}')
+            logging.debug(f'\nCurrent player name: {current_player.name}')
 
             if args.recommend and current_player.name in ['human', 'rules']:
                 # show recommendation from last loaded model
-                print(f'\nRecommendation by {ppo_agent.name}:')
+                logging.debug(f'\nRecommendation by {ppo_agent.name}:')
                 action = ppo_agent.choose_action(
                     env, choose_best_action=True, mask_invalid_actions=True)
 
@@ -86,11 +80,11 @@ def main(args):
                     # for MulitDiscrete action input as list TODO
                     action = eval(action)
             elif current_player.name == 'rules':
-                print(f'\n{current_player.name} model choices')
+                logging.debug(f'\n{current_player.name} model choices')
                 action = current_player.choose_action(
                     env, choose_best_action=False, mask_invalid_actions=True)
             else:
-                print(f'\n{current_player.name} model choices')
+                logging.debug(f'\n{current_player.name} model choices')
                 action = current_player.choose_action(
                     env, choose_best_action=args.best, mask_invalid_actions=True)
 
@@ -105,7 +99,7 @@ def main(args):
 
         env.render()
 
-        print(f"Played {game + 1} games: {total_rewards}")
+        logging.info(f"Played {game + 1} games: {total_rewards}")
 
         if args.write_results:
             write_results(players, game, args.games, env.turns_taken)

@@ -1,13 +1,12 @@
+import logging
 import os
-import numpy as np
 from shutil import copyfile
-from mpi4py import MPI
-
-from stable_baselines3.common.callbacks import EvalCallback
-
-from utils.files import get_best_model_name, get_model_stats
 
 import config
+import numpy as np
+from mpi4py import MPI
+from stable_baselines3.common.callbacks import EvalCallback
+from utils.files import get_best_model_name, get_model_stats
 
 
 class SelfPlayCallback(EvalCallback):
@@ -51,15 +50,15 @@ class SelfPlayCallback(EvalCallback):
 
             rank = MPI.COMM_WORLD.Get_rank()
             if rank == 0:
-                print("Eval num_timesteps={}, episode_reward={:.2f} +/- {:.2f}".format(
+                logging.debug("Eval num_timesteps={}, episode_reward={:.2f} +/- {:.2f}".format(
                     self.num_timesteps, av_reward, std_reward))
-                print("Total episodes ran={}".format(total_episodes))
+                logging.debug("Total episodes ran={}".format(total_episodes))
 
             # compare the latest reward against the threshold
             if result and av_reward > self.threshold:
                 self.generation += 1
                 if rank == 0:  # write new files
-                    print(f"New best model: {self.generation}\n")
+                    logging.debug(f"New best model: {self.generation}\n")
 
                     generation_str = str(self.generation).zfill(5)
                     av_rewards_str = str(round(av_reward, 3))

@@ -1,5 +1,6 @@
-
+import logging
 import gym
+from gym import spaces
 import numpy as np
 
 import config
@@ -41,10 +42,8 @@ class SushiGoEnv(gym.Env):
 
         self.total_cards = sum([x['count'] for x in self.contents])
 
-        self.action_space = gym.spaces.Discrete(
-            self.card_types + self.card_types * self.card_types)
-        self.observation_space = gym.spaces.Box(
-            0, 1, (self.total_cards * self.total_positions + self.n_players + self.action_space.n,))
+        self.action_space = spaces.Discrete(self.card_types + self.card_types * self.card_types)
+        self.observation_space = spaces.Box(0, 1, (self.total_cards * self.total_positions + self.n_players + self.action_space.n,))
         self.verbose = verbose
 
     @property
@@ -134,39 +133,39 @@ class SushiGoEnv(gym.Env):
         return counts_winners
 
     def score_puddings(self):
-        print('\nPudding counts...')
+        logging.debug('\nPudding counts...')
 
         puddings = []
         for p in self.players:
             puddings.append(
                 len([card for card in p.position.cards if card.type == 'pudding']))
 
-        print(f'Puddings: {puddings}')
+        logging.debug(f'Puddings: {puddings}')
 
         pudding_winners = self.get_limits(puddings, 'max')
 
         for i in pudding_winners:
             self.players[i].score += 6 // len(pudding_winners)
-            print(
+            logging.debug(
                 f'Player {self.players[i].id} 1st place puddings: {6 // len(pudding_winners)}')
 
         pudding_losers = self.get_limits(puddings, 'min')
 
         for i in pudding_losers:
             self.players[i].score -= 6 // len(pudding_losers)
-            print(
+            logging.debug(
                 f'Player {self.players[i].id} last place puddings: {-6 // len(pudding_losers)}')
 
     def score_maki(self, maki):
-        print('\nMaki counts...')
-        print(f'Maki: {maki}')
+        logging.debug('\nMaki counts...')
+        logging.debug(f'Maki: {maki}')
 
         maki_winners = self.get_limits(maki, 'max')
 
         for i in maki_winners:
             self.players[i].score += 6 // len(maki_winners)
             maki[i] = None  # mask out the winners
-            print(
+            logging.debug(
                 f'Player {self.players[i].id} 1st place maki: {6 // len(maki_winners)}')
 
         if len(maki_winners) == 1:
@@ -175,7 +174,7 @@ class SushiGoEnv(gym.Env):
 
             for i in maki_winners:
                 self.players[i].score += 3 // len(maki_winners)
-                print(
+                logging.debug(
                     f'Player {self.players[i].id} 2nd place maki: {3 // len(maki_winners)}')
 
     def score_round(self):
@@ -216,7 +215,7 @@ class SushiGoEnv(gym.Env):
             return True, first_card, second_card
 
     def pickup_chopsticks(self, player):
-        print(f'Player {player.id} picking up chopsticks')
+        logging.debug(f'Player {player.id} picking up chopsticks')
         chopsticks = player.position.pick('chopsticks')
         player.hand.add([chopsticks])
 
@@ -225,11 +224,11 @@ class SushiGoEnv(gym.Env):
         card_name = self.contents[card_num]['info']['name']
         card = player.hand.pick(card_name)
         if card is None:
-            print(
+            logging.debug(
                 f"Player {player.id} trying to play {card_num} but doesn't exist!")
             raise Exception('Card not found')
 
-        print(
+        logging.debug(
             f"Player {player.id} playing {str(card.order) + ': ' + card.symbol + ': ' + str(card.id)}")
         if card.type == 'nigiri':
             for c in player.position.cards:
@@ -241,7 +240,7 @@ class SushiGoEnv(gym.Env):
         player.position.add([card])
 
     def switch_hands(self):
-        print(f'\nSwitching hands...')
+        logging.debug(f'\nSwitching hands...')
         playernhand = self.players[-1].hand
 
         for i in range(self.n_players - 1, -1, -1):
@@ -266,7 +265,7 @@ class SushiGoEnv(gym.Env):
             self.action_bank.append(action)
 
             if len(self.action_bank) == self.n_players:
-                print(f'\nThe chosen cards are now played simultaneously')
+                logging.debug(f'\nThe chosen cards are now played simultaneously')
                 for i, action in enumerate(self.action_bank):
                     player = self.players[i]
 
@@ -330,7 +329,7 @@ class SushiGoEnv(gym.Env):
         self.current_player_num = 0
         self.done = False
         self.reset_round()
-        print(f'\n\n---- NEW GAME ----')
+        logging.debug(f'\n\n---- NEW GAME ----')
         return self.observation
 
     def render(self, mode='human', close=False):
@@ -339,44 +338,44 @@ class SushiGoEnv(gym.Env):
             return
 
         if self.turns_taken < self.cards_per_player:
-            print(
+            logging.debug(
                 f'\n\n-------ROUND {self.round} : TURN {self.turns_taken + 1}-----------')
-            print(f"It is Player {self.current_player.id}'s turn to choose")
+            logging.debug(f"It is Player {self.current_player.id}'s turn to choose")
         else:
-            print(f'\n\n-------FINAL ROUND {self.round} POSITION-----------')
+            logging.debug(f'\n\n-------FINAL ROUND {self.round} POSITION-----------')
 
         for p in self.players:
-            print(f'\nPlayer {p.id}\'s hand')
+            logging.debug(f'\nPlayer {p.id}\'s hand')
             if p.hand.size() > 0:
-                print('  '.join(
+                logging.debug('  '.join(
                     [str(card.order) + ': ' + card.symbol for card in sorted(p.hand.cards, key=lambda x: x.id)]))
             else:
-                print('Empty')
+                logging.debug('Empty')
 
-            print(f'Player {p.id}\'s position')
+            logging.debug(f'Player {p.id}\'s position')
             if p.position.size() > 0:
-                print('  '.join([str(card.order) + ': ' + card.symbol + ': ' + str(card.id)
+                logging.debug('  '.join([str(card.order) + ': ' + card.symbol + ': ' + str(card.id)
                       for card in sorted(p.position.cards, key=lambda x: x.id)]))
             else:
-                print('Empty')
+                logging.debug('Empty')
 
-        print(f'\n{self.deck.size()} cards left in deck')
-        print(f'{self.discard.size()} cards discarded')
+        logging.debug(f'\n{self.deck.size()} cards left in deck')
+        logging.debug(f'{self.discard.size()} cards discarded')
 
         if self.verbose:
-            print(
+            logging.debug(
                 f'\nObservation: \n{[i if o == 1 else (i,o) for i,o in enumerate(self.observation) if o != 0]}')
 
         if not self.done:
-            print(
+            logging.debug(
                 f'\nLegal actions: {[i for i,o in enumerate(self.legal_actions) if o != 0]}')
 
         if self.done:
-            print(f'\n\nGAME OVER')
+            logging.debug(f'\n\nGAME OVER')
 
         if self.turns_taken == self.cards_per_player:
             for p in self.players:
-                print(f'Player {p.id} points: {p.score}')
+                logging.debug(f'Player {p.id} points: {p.score}')
 
     def rules_move(self):
         raise Exception(
