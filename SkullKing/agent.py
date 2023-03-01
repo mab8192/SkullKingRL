@@ -4,10 +4,10 @@ from typing import List
 from copy import deepcopy
 import numpy as np
 
-from game import Hand, Trick
+import game
 
 
-class MemoryReplay:
+class ReplayBuffer:
     def __init__(self, capacity: int) -> None:
         self.memory = deque([], maxlen=capacity)
 
@@ -30,9 +30,9 @@ class BaseAgent:
 
         # Per round properties
         self.bet = -1  # Bet for the current round
-        self.starting_hand = Hand()
-        self.hand = Hand()  # Current hand of cards
-        self.tricks: List[Trick] = []  # List of collected tricks so far
+        self.starting_hand = game.Hand()
+        self.hand = game.Hand()  # Current hand of cards
+        self.tricks: List[game.Trick] = []  # List of collected tricks so far
 
         self.current_position = 0  # Position in play
 
@@ -57,19 +57,46 @@ class BaseAgent:
                 diff = abs(self.bet - len(self.tricks))
                 self.score -= diff*10  # Lose 10 points per trick off from `bet`
 
-    def assign_hand(self, hand: Hand):
+    def assign_hand(self, hand: game.Hand):
         self.starting_hand = deepcopy(hand)  # Maintain a separate copy of the starting hand.
         self.hand = hand
 
     def cleanup(self):
         """Cleanup intermediates between rounds"""
-        self.hand = Hand()
+        self.hand = game.Hand()
         self.tricks = []
         self.bet = -1
 
-    def _get_legal_actions(self, game_state):
-        """Of the cards in this agent's hand, return only those which are legal to play."""
-        pass
+    def _get_legal_actions(self, game_state: dict) -> np.ndarray:
+        """
+        Of the cards in this agent's hand, return only those which are legal to play.
+        game_state will contain the following information:
+            - player_bets: List[int]
+            - current_trick: Trick
+            - player_scores: List[int]
+            - tricks_taken: List[int]
+            - cards_played: List[int]
+        """
+        legal_actions = np.zeros(len(game.ALL_CARDS))
+
+        current_trick: game.Trick = game_state["current_trick"]
+        if len(current_trick) == 0:
+            # No cards in current trick, all cards can be played
+            legal_actions[[card.id for card in self.hand.cards]] = 1
+            return legal_actions
+
+        # At least one card has been played
+        trump_color = current_trick.get_trump_color()
+        for card in self.hand.cards:
+            if not isinstance(card, game.Number):
+                legal_actions[card.id] = 1
+            else:
+                if trump_color is None or card.color == trump_color:
+                    legal_actions[card.id] = 1
+                else:
+                    legal_actions[card.id] = 0
+
+        return legal_actions
 
     def bid(self):
         """Make a bid prediction based on the current player's hand."""
@@ -82,8 +109,10 @@ class BaseAgent:
 
 class RLAgent(BaseAgent):
     """An agent that learns with delayed rewards."""
-    def __init__(self, id: int, memory_capacity: int = 10_000) -> None:
+    def __init__(self, id: int, bid_replay_buffer: ReplayBuffer, play_replay_buffer: ReplayBuffer) -> None:
         super().__init__(id)
+
+        raise NotImplementedError
 
         # Extra properties for RL
         self.last_action = -1
@@ -95,8 +124,10 @@ class RLAgent(BaseAgent):
         self.play_network = None  # Network that decides which card to play, trained with Deep Q-Learning
         self.target_network = None
 
-        self.bid_memory = MemoryReplay(memory_capacity)
-        self.play_memory = MemoryReplay(memory_capacity)
+        # Global memory shared by all agents
+        # Reduces the number of games required to play to update the networks
+        self.bid_memory = bid_replay_buffer
+        self.play_memory = play_replay_buffer
 
     def cleanup(self):
         super().cleanup()
@@ -122,15 +153,32 @@ class RLAgent(BaseAgent):
 
 class RandomAgent(BaseAgent):
     """An agent that learns with delayed rewards."""
-    def __init__(self, id: int) -> None:
-        super().__init__(id)
-
     def bid(self):
         """Make a bid prediction based on the current player's hand."""
         self.bet = random.randint(0, len(self.hand))
+        return self.bet
 
     def play(self, game_state):
         """Play a card from the agent's hand, given the current global state and the agent's internal state."""
         legal_actions = self._get_legal_actions(game_state)
-        action = np.random.choice(legal_actions)
+        choices = np.nonzero(legal_actions)
+        action = np.random.choice(choices)
         return action
+
+
+class ManualAgent(BaseAgent):
+    """An agent controlled by the command line"""
+    def bid(self):
+        print(self.hand)
+        self.bet = int(input("Enter your bet: "))
+        return self.bet
+
+    def play(self, game_state):
+        print(game_state["current_trick"])
+        print("You bet:", self.bet)
+        print("Your hand:", self.hand)
+        legal_actions = self._get_legal_actions(game_state)
+        while True:
+            action = int(input("Enter the card you want to play: "))
+            if legal_actions[action] == 1:
+                return action

@@ -1,53 +1,89 @@
-import gym
-from gym import spaces
 import numpy as np
+from agent import ManualAgent, RandomAgent, RLAgent
+from game import Deck, Trick
 
-from .game import Deck, Trick
 
-class SkullKingEnv(gym.Env):
+class SkullKingGame:
     def __init__(self, n_players: int) -> None:
         super().__init__()
-        self.name = "Skull King"
-
         self.deck = Deck()
-        self.n_players = n_players
 
+        self.n_players = n_players
         self.round = 0
         self.current_player = 0
+
+        # Global game state
+        # - player_bets: List[int]
+        # - current_trick: Trick
+        # - player_scores: List[int]
+        # - tricks_taken: List[int]
+        # - cards_played: List[int]
+
+        # Bet for each player in the current round.
+        self.player_bets = []
+
+        # Current trick being played
         self.current_trick = Trick()
 
-        self.total_cards = len(self.deck)
+        # Scores for each player
+        self.player_scores = []
 
-        # Action space is the total number of cards in the deck
-        # Each action corresponds to a single bet or a single card.
-        # Bets can range from [0, 10] for a total of 11 possible bet actions.
-        self.action_space = spaces.Discrete(11 + self.total_cards)
+        # Number of tricks taken for each player
+        self.tricks_taken = []
 
-        # Construct the observation space
-        # Consists of:
-        #   your hand, which moves are legal, each player's bets, each player's scores,
-        #   the cards that have been played previously, your turn in the order of play,
-        #   round number, cards that have been played in the current trick''''
-        self.observation_space = ... # TODO
+        # Cards played in the current round
+        self.cards_played = np.zeros(len(self.deck))
 
         self.reset()
 
-    def reset(self) -> None:
-        return self.observation
+    def reset(self):
+        self.round = 0
+        self.current_player = 0
+        self.player_bets = [0]*len(self.n_players)
+        self.current_trick = Trick()
+        self.player_scores = [0]*len(self.n_players)
+        self.tricks_taken = [0]*len(self.n_players)
+        self.cards_played = np.zeros(len(self.deck))
 
     @property
-    def observation(self):
-        pass
+    def state(self):
+        return {
+            "player_bets": self.player_bets,
+            "current_trick": self.current_trick,
+            "player_scores": self.player_scores,
+            "tricks_taken": self.tricks_taken,
+            "cards_played": self.cards_played
+        }
 
-    def legal_actions(self):
-        """Return a mask for which moves are legal for the current player"""
-        pass
-
-    def step(self, action):
+    def play_trick(self):
         """
-        Take the given action for the current player.
-        Check if the trick is over. if so set current player to the winner. If not, advance current_player
-        Check if the round is over. If so, score points and distribute rewards.
+        Starting with the current player, prompt each player to play a card for the current trick.
         """
         pass
 
+    def play_round(self):
+        """
+        Starting with the current player, prompt each agent to play a card in order, updating
+        the game state as we go.
+        """
+        # Shuffle the deck
+
+        # Deal hands
+
+        # Collect player bids
+        for agent in self.agents:
+            pass
+
+        # Play each trick in the round
+
+    def score_round(self):
+        """
+        Compute scores for each player for the current round.
+        """
+        pass
+
+    def play_game(self):
+        """
+        Simulate a full game of Skull King.
+        """
+        pass
