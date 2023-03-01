@@ -67,6 +67,8 @@ class SkullKingGame:
         the game state as we go.
         """
         # Shuffle the deck
+        self.deck.reset()
+        self.deck.shuffle()
 
         # Deal hands
 
