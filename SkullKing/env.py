@@ -2,7 +2,7 @@ import gym
 from gym import spaces
 import numpy as np
 
-from .objs import Deck, Player, Trick
+from .game import Deck, Trick
 
 class SkullKingEnv(gym.Env):
     def __init__(self, n_players: int) -> None:
@@ -15,11 +15,6 @@ class SkullKingEnv(gym.Env):
         self.round = 0
         self.current_player = 0
         self.current_trick = Trick()
-
-        self.players = []
-        player_id = 0
-        for _ in range(n_players):
-            self.players.append(Player(player_id))
 
         self.total_cards = len(self.deck)
 
