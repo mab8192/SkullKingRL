@@ -33,12 +33,6 @@ class BaseAgent:
         self.hand = game.Hand()  # Current hand of cards
         self.tricks: List[game.Trick] = []  # List of collected tricks so far
 
-        self.current_position = 0  # Position in play
-
-        # TODO: future properties
-        self.loot_with = -1  # Flag to indicate if a player has loot with anyone
-        self.wager = 0  # Ability to wager with Rascal of Roatan
-
     def compute_score(self, round_number: int) -> int:
         score = 0
 

@@ -1,6 +1,6 @@
 from typing import List
 import numpy as np
-from agent import ManualAgent, RandomAgent, RLAgent, BaseAgent
+from agents import ManualAgent, RandomAgent, RLAgent, BaseAgent
 from game import Deck, Trick, Hand
 
 
@@ -11,7 +11,7 @@ class SkullKingGame:
 
         self.n_players = n_manual + n_random + n_rl
         self.round = 0
-        self.current_player = 0
+        self.current_player = np.random.randint(0, self.n_players)  # Start with a random player
 
         # Init agents
         self.players: List[BaseAgent] = []
@@ -54,7 +54,7 @@ class SkullKingGame:
 
     def reset(self):
         self.round = 0
-        self.current_player = 0
+        self.current_player = np.random.randint(0, self.n_players)  # Start with a random player
         self.player_bets = np.zeros(self.n_players)
         self.current_trick = Trick()
         self.player_scores = np.zeros(self.n_players)
@@ -92,10 +92,6 @@ class SkullKingGame:
         Starting with the current player, prompt each agent to play a card in order, updating
         the game state as we go.
         """
-        # Shuffle the deck
-        self.deck.reset()
-        self.deck.shuffle()
-
         # Deal hands
         for i, player in enumerate(self.players):
             hand = Hand()
@@ -117,7 +113,6 @@ class SkullKingGame:
                 self.tricks_taken[self.current_player] += 1  # current_player is now the winner of the current trick
 
             print(f"Player {self.current_player} won the trick.")
-            self.current_trick = Trick()
 
     def score_round(self):
         """
@@ -125,6 +120,29 @@ class SkullKingGame:
         """
         for i, player in enumerate(self.players):
             self.player_scores[i] += player.compute_score(self.round)
+
+    def cleanup_round(self):
+        """
+        Clean up any intermediates created during the last round.
+        """
+        for player in self.players:
+            player.cleanup()
+
+        # Shuffle the deck
+        self.deck.reset()
+        self.deck.shuffle()
+
+        # Randomly choose a new starting player for next round
+        self.current_player = np.random.randint(0, self.n_players)
+
+        # Reset player bets
+        self.player_bets = np.zeros(self.n_players)
+
+        # Reset current trick
+        self.current_trick = Trick()
+
+        # Reset tricks taken
+        self.tricks_taken = np.zeros(self.n_players)
 
     def play_game(self):
         """
@@ -136,7 +154,5 @@ class SkullKingGame:
             print("\nStarting round", self.round)
             self.play_round()
             self.score_round()
-            for player in self.players:
-                player.cleanup()
-
+            self.cleanup_round()
             print("Scores are now:", self.player_scores)
