@@ -8,6 +8,10 @@ import numpy as np
 
 
 class ReplayBuffer:
+    """
+    Captures interactions between agents and the environment so they can be
+    used to train the neural networks for RL-based agents.
+    """
     def __init__(self, capacity: int) -> None:
         self.memory = deque([], maxlen=capacity)
 
@@ -111,12 +115,47 @@ class BaseAgent:
         raise NotImplementedError
 
 
-class RLAgent(BaseAgent):
+class RandomAgent(BaseAgent):
     """An agent that learns with delayed rewards."""
+    def bid(self, game_state) -> int:
+        """Make a bid prediction based on the current player's hand."""
+        self.bet = random.randint(0, len(self.hand))
+        return self.bet
+
+    def play(self, game_state) -> game.Card:
+        """Play a card from the agent's hand, given the current global state and the agent's internal state."""
+        legal_actions = self._get_legal_actions(game_state)
+        choices = np.nonzero(legal_actions)[0]
+        action = np.random.choice(choices)
+        card = self.hand.pick_card(action)
+        return card
+
+
+class ManualAgent(BaseAgent):
+    """An agent controlled by the command line"""
+    def bid(self, game_state) -> int:
+        print("\nTime to bet!")
+        print("Your hand is:", self.hand)
+        self.bet = int(input("Enter your bet: "))
+        return self.bet
+
+    def play(self, game_state) -> game.Card:
+        print("\nYour turn to play a card!")
+        print("Cards played:", game_state["current_trick"])
+        print("Player bets:", game_state["player_bets"])
+        print("Your hand:", self.hand)
+        legal_actions = self._get_legal_actions(game_state)
+        while True:
+            action = int(input("Enter the card you want to play: "))
+            if legal_actions[action] == 1:
+                card = self.hand.pick_card(action)
+                return card
+
+
+class RLAgent(BaseAgent):
+    """An agent that learns with delayed, sparse rewards."""
     def __init__(self, id: int, bid_replay_buffer: ReplayBuffer, play_replay_buffer: ReplayBuffer) -> None:
         super().__init__(id)
-
-        raise NotImplementedError
 
         # Extra properties for RL
         self.last_action = -1
@@ -130,6 +169,7 @@ class RLAgent(BaseAgent):
 
         # Global memory shared by all agents
         # Reduces the number of games required to play to update the networks
+        # All RL agents learn from shared experiences
         self.bid_memory = bid_replay_buffer
         self.play_memory = play_replay_buffer
 
@@ -153,42 +193,3 @@ class RLAgent(BaseAgent):
 
     def optimize(self):
         raise NotImplementedError
-
-
-class RandomAgent(BaseAgent):
-    """An agent that learns with delayed rewards."""
-    def bid(self, game_state) -> int:
-        """Make a bid prediction based on the current player's hand."""
-        self.bet = random.randint(0, len(self.hand))
-        return self.bet
-
-    def play(self, game_state) -> game.Card:
-        """Play a card from the agent's hand, given the current global state and the agent's internal state."""
-        legal_actions = self._get_legal_actions(game_state)
-        choices = np.nonzero(legal_actions)[0]
-        action = np.random.choice(choices)
-        card = game.ALL_CARDS[action]
-        self.hand.pick(card.name)
-        return card
-
-
-class ManualAgent(BaseAgent):
-    """An agent controlled by the command line"""
-    def bid(self, game_state) -> int:
-        print("\nTime to bet!")
-        print("Your hand is:", self.hand)
-        self.bet = int(input("Enter your bet: "))
-        return self.bet
-
-    def play(self, game_state) -> game.Card:
-        print("\nYour turn to play a card!")
-        print("Cards played:", game_state["current_trick"])
-        print("Player bets:", game_state["player_bets"])
-        print("Your hand:", self.hand)
-        legal_actions = self._get_legal_actions(game_state)
-        while True:
-            action = int(input("Enter the card you want to play: "))
-            if legal_actions[action] == 1:
-                card = game.ALL_CARDS[action]
-                self.hand.pick(card.name)
-                return card

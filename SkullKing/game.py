@@ -292,9 +292,9 @@ class Hand:
     def add_cards(self, cards):
         self.cards += cards
 
-    def pick(self, name):
+    def pick_card(self, card_id):
         for i, card in enumerate(self.cards):
-            if card.name == name:
+            if card.id == card_id:
                 self.cards.pop(i)
                 return card
 
