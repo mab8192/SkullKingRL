@@ -65,7 +65,7 @@ class Number(Card):
             raise NotImplementedError
 
 class Pirate(Card):
-    def capture_mermaid(self, count):
+    def capture_mermaids(self, count):
         self.bonus_points += count*20
 
     def __gt__(self, other):
@@ -75,7 +75,7 @@ class Pirate(Card):
         elif isinstance(other, Pirate):
             return self.trick_order < other.trick_order
         elif isinstance(other, Mermaid):
-            return True
+            return not other.captured_sk  # Pirate beats mermaid unless she captured the skull king
         elif isinstance(other, SkullKing):
             return False
         elif isinstance(other, Escape) or isinstance(other, Loot):
@@ -93,15 +93,20 @@ class Pirate(Card):
             raise NotImplementedError
 
 class Mermaid(Card):
+    def __init__(self, id, name):
+        super().__init__(id, name)
+        self.captured_sk = False
+
     def capture_skullking(self):
         self.bonus_points = 50
+        self.captured_sk = True
 
     def __gt__(self, other):
         super().__gt__(other)
         if isinstance(other, Number):
             return True
         elif isinstance(other, Pirate):
-            return False
+            return self.captured_sk  # Mermaid beats pirate if it captured the skull king
         elif isinstance(other, Mermaid):
             return self.trick_order < other.trick_order
         elif isinstance(other, SkullKing):
@@ -121,7 +126,7 @@ class Mermaid(Card):
             raise NotImplementedError
 
 class SkullKing(Card):
-    def capture_pirate(self, count):
+    def capture_pirates(self, count):
         self.bonus_points += count*30
 
     def __gt__(self, other):
@@ -376,5 +381,20 @@ class Trick:
                 if card > current_winning_card:
                     current_winner = player_id
                     current_winning_card = card
+
+        # Add bonus points if the winning card was the skull king, mermaid, or pirate
+        if isinstance(current_winning_card, Pirate):
+            count = 0
+            for _, card in self.cards:
+                if isinstance(card, Mermaid): count += 1
+            current_winning_card.capture_mermaids(count)
+        elif isinstance(current_winning_card, Mermaid):
+            if any([isinstance(c, SkullKing) for _, c in self.cards]):
+                current_winning_card.capture_skullking()
+        elif isinstance(current_winning_card, SkullKing):
+            count = 0
+            for _, card in self.cards:
+                if isinstance(card, Pirate): count += 1
+            current_winning_card.capture_pirates(count)
 
         return current_winner
