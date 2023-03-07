@@ -1,5 +1,5 @@
-from typing import List
 import random
+from typing import List, Tuple
 
 #################################### Card objects ####################################
 
@@ -11,10 +11,13 @@ class Card:
         self.trick_order = 0
 
     def __str__(self) -> str:
-        return f"[{self.__class__.__name__}] {self.name}"
+        return f"({self.id})[{self.__class__.__name__}] {self.name}"
 
     def __repr__(self) -> str:
-        return f"[{self.__class__.__name__}] {self.name}"
+        return f"({self.id})[{self.__class__.__name__}] {self.name}"
+
+    def __gt__(self, other):
+        if not isinstance(other, Card): raise ValueError
 
 CARD_COLOR_BLACK = 0
 CARD_COLOR_YELLOW = 1
@@ -31,32 +34,176 @@ class Number(Card):
         if value == 14:
             self.bonus_points = 20 if color == CARD_COLOR_BLACK else 10
 
-    def __gt__(self, other, trump_color):
+    def __gt__(self, other, trick_color):
         super().__gt__(other)
+        if isinstance(other, Number):
+            if self.color == CARD_COLOR_BLACK and other.color != CARD_COLOR_BLACK:
+                return True
+            elif self.color != CARD_COLOR_BLACK and other.color == CARD_COLOR_BLACK:
+                return False
+            elif self.color == trick_color and other.color != trick_color:
+                return True
+            elif self.color != trick_color and other.color == trick_color:
+                return False
+            else:
+                return self.value > other.value
+        elif isinstance(other, Pirate):
+            return False
+        elif isinstance(other, Mermaid):
+            return False
+        elif isinstance(other, SkullKing):
+            return False
+        elif isinstance(other, Escape) or isinstance(other, Loot):
+            return True
+        elif isinstance(other, Kraken):
+            return True
+        elif isinstance(other, WhiteWhale):
+            return True
+        elif isinstance(other, Tigress):
+            return False if other.as_pirate else True
+        else:
+            raise NotImplementedError
 
 class Pirate(Card):
     def capture_mermaid(self, count):
         self.bonus_points += count*20
 
+    def __gt__(self, other):
+        super().__gt__(other)
+        if isinstance(other, Number):
+            return True
+        elif isinstance(other, Pirate):
+            return self.trick_order < other.trick_order
+        elif isinstance(other, Mermaid):
+            return True
+        elif isinstance(other, SkullKing):
+            return False
+        elif isinstance(other, Escape) or isinstance(other, Loot):
+            return True
+        elif isinstance(other, Kraken):
+            return True
+        elif isinstance(other, WhiteWhale):
+            return self.trick_order < other.trick_order
+        elif isinstance(other, Tigress):
+            if other.as_pirate:
+                return self.trick_order < other.trick_order
+            else:
+                return True
+        else:
+            raise NotImplementedError
+
 class Mermaid(Card):
     def capture_skullking(self):
         self.bonus_points = 50
+
+    def __gt__(self, other):
+        super().__gt__(other)
+        if isinstance(other, Number):
+            return True
+        elif isinstance(other, Pirate):
+            return False
+        elif isinstance(other, Mermaid):
+            return self.trick_order < other.trick_order
+        elif isinstance(other, SkullKing):
+            return False
+        elif isinstance(other, Escape) or isinstance(other, Loot):
+            return True
+        elif isinstance(other, Kraken):
+            return True
+        elif isinstance(other, WhiteWhale):
+            return self.trick_order < other.trick_order
+        elif isinstance(other, Tigress):
+            if other.as_pirate:
+                return False
+            else:
+                return True
+        else:
+            raise NotImplementedError
 
 class SkullKing(Card):
     def capture_pirate(self, count):
         self.bonus_points += count*30
 
+    def __gt__(self, other):
+        super().__gt__(other)
+        if isinstance(other, Number):
+            return True
+        elif isinstance(other, Pirate):
+            return True
+        elif isinstance(other, Mermaid):
+            return False
+        elif isinstance(other, SkullKing):
+            raise RuntimeError("Cannot compare two skull king cards")
+        elif isinstance(other, Escape) or isinstance(other, Loot):
+            return True
+        elif isinstance(other, Kraken):
+            return True
+        elif isinstance(other, WhiteWhale):
+            return self.trick_order < other.trick_order
+        elif isinstance(other, Tigress):
+            return True
+        else:
+            raise NotImplementedError
+
 class Escape(Card):
-    pass
+    def __gt__(self, other):
+        super().__gt__(other)
+        if isinstance(other, Number):
+            return False
+        elif isinstance(other, Pirate):
+            return False
+        elif isinstance(other, Mermaid):
+            return False
+        elif isinstance(other, SkullKing):
+            return False
+        elif isinstance(other, Escape) or isinstance(other, Loot):
+            return self.trick_order < other.trick_order
+        elif isinstance(other, Kraken):
+            return self.trick_order < other.trick_order
+        elif isinstance(other, WhiteWhale):
+            return self.trick_order < other.trick_order
+        elif isinstance(other, Tigress):
+            if other.as_pirate:
+                return False
+            else:
+                return self.trick_order < other.trick_order
+        else:
+            raise NotImplementedError
 
 class Loot(Card):
-    pass
+    def __gt__(self, other):
+        super().__gt__(other)
+        if isinstance(other, Number):
+            return False
+        elif isinstance(other, Pirate):
+            return False
+        elif isinstance(other, Mermaid):
+            return False
+        elif isinstance(other, SkullKing):
+            return False
+        elif isinstance(other, Escape) or isinstance(other, Loot):
+            return self.trick_order < other.trick_order
+        elif isinstance(other, Kraken):
+            return self.trick_order < other.trick_order
+        elif isinstance(other, WhiteWhale):
+            return self.trick_order < other.trick_order
+        elif isinstance(other, Tigress):
+            if other.as_pirate:
+                return False
+            else:
+                return self.trick_order < other.trick_order
+        else:
+            raise NotImplementedError
 
 class Kraken(Card):
-    pass
+    def __gt__(self, other):
+        super().__gt__(other)
+        return False
 
 class WhiteWhale(Card):
-    pass
+    def __gt__(self, other):
+        super().__gt__(other)
+        return False
 
 class Tigress(Card):
     def __init__(self, id, name):
@@ -66,7 +213,31 @@ class Tigress(Card):
     def use_as_pirate(self, as_pirate):
         self.as_pirate = as_pirate
 
-ALL_CARDS = [
+    def __gt__(self, other):
+        super().__gt__(other)
+        if isinstance(other, Number):
+            return True if self.as_pirate else False
+        elif isinstance(other, Pirate):
+            return True if self.as_pirate and self.trick_order < other.trick_order else False
+        elif isinstance(other, Mermaid):
+            return True if self.as_pirate else False
+        elif isinstance(other, SkullKing):
+            return False
+        elif isinstance(other, Escape) or isinstance(other, Loot):
+            if self.as_pirate:
+                return True
+            else:
+                return self.trick_order < other.trick_order
+        elif isinstance(other, Kraken):
+            return True
+        elif isinstance(other, WhiteWhale):
+            return self.trick_order < other.trick_order
+        elif isinstance(other, Tigress):
+            raise RuntimeError("Cannot compare two Tigresses")
+        else:
+            raise NotImplementedError
+
+ALL_CARDS: List[Card] = [
     SkullKing(0, "Skull King"),
     Pirate(1, "Harry the Giant"),
     Pirate(2, "Juanita Jade"),
@@ -109,6 +280,12 @@ class Hand:
     def __len__(self):
         return len(self.cards)
 
+    def __str__(self) -> str:
+        return ", ".join([str(c) for c in self.cards])
+
+    def __repr__(self) -> str:
+        return ", ".join([str(c) for c in self.cards])
+
     def add_card(self, card):
         self.cards.append(card)
 
@@ -120,7 +297,6 @@ class Hand:
             if card.name == name:
                 self.cards.pop(i)
                 return card
-
 
 class Deck:
     def __init__(self):
@@ -145,31 +321,60 @@ class Deck:
 
 class Trick:
     def __init__(self) -> None:
-        self.cards: List[Card] = []
+        self.cards: List[Tuple[int, Card]] = []
         self.color = None
+        self.pms_played = False  # pms = pirate mermaid skullking
+        self.kraken_played = False
+
+    def __len__(self):
+        return len(self.cards)
+
+    def __str__(self) -> str:
+        return " -> ".join([str(c) for c in self.cards])
+
+    def __repr__(self) -> str:
+        return " -> ".join([str(c) for c in self.cards])
 
     @property
     def bonus_points(self) -> float:
         bonus_points = 0
-        for card in self.cards:
+        for _, card in self.cards:
             bonus_points += card.bonus_points
 
         return bonus_points
 
     def add_card(self, player_id: int, card: Card):
+        if len(self.cards) == 0:
+            self.first_card = card
+
         self.cards.append((player_id, card))
 
-        if self.color is None and isinstance(card, Number):
+        if isinstance(card, Pirate) or isinstance(card, Mermaid) or isinstance(card, SkullKing):
+            self.pms_played = True
+        elif isinstance(card, Kraken):
+            self.kraken_played = True
+
+        # The trick gets a color if the first number played is played before a pirate, mermaid, or skull king
+        if self.color is None and isinstance(card, Number) and not self.pms_played:
             self.color = card.color
 
-    def get_trump_color(self):
+    def get_first_color(self):
         return self.color
 
     def get_winner(self):
         """Compute the id of the player who won the trick"""
-        current_winner = 0
-        current_winning_card = None
-        trump_color = ""
+        current_winner = self.cards[0][0]
+        current_winning_card = self.cards[0][1]
 
-        for player_id, card in self.cards:
-            pass
+        for player_id, card in self.cards[1:]:
+            # Check if the current card beats the winning card
+            if isinstance(card, Number):
+                if card.__gt__(current_winning_card, self.color):
+                    current_winner = player_id
+                    current_winning_card = card
+            else:
+                if card > current_winning_card:
+                    current_winner = player_id
+                    current_winning_card = card
+
+        return current_winner
