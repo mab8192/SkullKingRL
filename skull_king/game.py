@@ -1,3 +1,4 @@
+import copy
 import random
 from typing import List, Tuple
 
@@ -110,7 +111,7 @@ class Mermaid(Card):
         elif isinstance(other, Mermaid):
             return self.trick_order < other.trick_order
         elif isinstance(other, SkullKing):
-            return False
+            return True
         elif isinstance(other, Escape) or isinstance(other, Loot):
             return True
         elif isinstance(other, Kraken):
@@ -266,15 +267,22 @@ id = len(ALL_CARDS)
 for color in [CARD_COLOR_BLACK, CARD_COLOR_YELLOW, CARD_COLOR_GREEN, CARD_COLOR_PINK]:
     for i in range(1, 15):
         if color == CARD_COLOR_BLACK:
-            color_name = "black"
+            color_name = "Black"
         elif color == CARD_COLOR_YELLOW:
-            color_name = "yellow"
+            color_name = "Yellow"
         elif color == CARD_COLOR_GREEN:
-            color_name = "green"
+            color_name = "Green"
         elif color == CARD_COLOR_PINK:
-            color_name = "pink"
+            color_name = "Pink"
         ALL_CARDS.append(Number(id, f"{color_name} {i}", color, i))
         id += 1
+
+
+def get_card(name):
+    for card in ALL_CARDS:
+        if card.name == name:
+            return copy.deepcopy(card)
+
 
 #################################### Non-card objects ####################################
 
@@ -313,7 +321,7 @@ class Deck:
         return len(self.cards)
 
     def reset(self):
-        self.cards = ALL_CARDS.copy()
+        self.cards = copy.deepcopy(ALL_CARDS)
 
     def shuffle(self):
         random.shuffle(self.cards)
@@ -330,6 +338,7 @@ class Trick:
         self.color = None
         self.pms_played = False  # pms = pirate mermaid skullking
         self.kraken_played = False
+        self.white_whale_played = False
 
     def __len__(self):
         return len(self.cards)
@@ -352,12 +361,16 @@ class Trick:
         if len(self.cards) == 0:
             self.first_card = card
 
+        card.trick_order = len(self.cards)
+
         self.cards.append((player_id, card))
 
         if isinstance(card, Pirate) or isinstance(card, Mermaid) or isinstance(card, SkullKing):
             self.pms_played = True
         elif isinstance(card, Kraken):
             self.kraken_played = True
+        elif isinstance(card, WhiteWhale):
+            self.white_whale_played = True
 
         # The trick gets a color if the first number played is played before a pirate, mermaid, or skull king
         if self.color is None and isinstance(card, Number) and not self.pms_played:
@@ -371,6 +384,24 @@ class Trick:
         current_winner = self.cards[0][0]
         current_winning_card = self.cards[0][1]
 
+        # Special case: White Whale was played during the round
+        if self.white_whale_played:
+            highest_value = current_winning_card.value if isinstance(current_winning_card, Number) else 0
+            # Only consider numbers
+            for player_id, card in self.cards[1:]:
+                if isinstance(card, Number):
+                    if card.value > highest_value:
+                        current_winning_card = card
+                        current_winner = player_id
+
+            return current_winner
+
+        # No white whale was played, get winner as usual
+
+        pirate_played = isinstance(current_winning_card, Pirate)
+        mermaid_played = isinstance(current_winning_card, Mermaid)
+        sk_played = isinstance(current_winning_card, SkullKing)
+
         for player_id, card in self.cards[1:]:
             # Check if the current card beats the winning card
             if isinstance(card, Number):
@@ -378,9 +409,24 @@ class Trick:
                     current_winner = player_id
                     current_winning_card = card
             else:
+                if isinstance(card, Pirate):
+                    pirate_played = True
+                elif isinstance(card, Mermaid):
+                    mermaid_played = True
+                elif isinstance(card, SkullKing):
+                    sk_played = True
+
                 if card > current_winning_card:
                     current_winner = player_id
                     current_winning_card = card
+
+        # Special case, if all three PMS are played then the mermaid wins
+        if pirate_played and mermaid_played and sk_played:
+            # Find the mermaid
+            for player_id, card in self.cards:
+                if isinstance(card, Mermaid):
+                    current_winner = player_id
+                    current_winning_card = Mermaid
 
         # Add bonus points if the winning card was the skull king, mermaid, or pirate
         if isinstance(current_winning_card, Pirate):
