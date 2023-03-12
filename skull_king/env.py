@@ -103,6 +103,8 @@ class SkullKingGame:
             hand.add_cards(self.deck.draw(self.round))
             player.assign_hand(hand)
 
+        logging.info(f"Player {self.current_player} will start the round.")
+
         # Collect player bids
         for i, player in enumerate(self.players):
             self.player_bets[i] = player.bid(self.state)
@@ -110,7 +112,7 @@ class SkullKingGame:
         # Play each trick in the round
         for _ in range(self.round):
             self.play_trick()
-            logging.debug(f"Getting winner for trick: {self.current_trick}")
+            logging.info(f"Final trick state: {self.current_trick}")
             self.current_player = self.current_trick.get_winner()
 
             if not self.current_trick.kraken_played:
@@ -193,9 +195,9 @@ class SkullKingGame:
             logging.debug(f"Starting round {self.round}")
             self.play_round()
             round_scores = self.score_round()
-            logging.debug(f"Player bets: {self.player_bets}")
-            logging.debug(f"Tricks taken: {self.tricks_taken}")
-            logging.debug(f"Old scores: {self.player_scores}")
+            logging.info(f"Player bets: {self.player_bets}")
+            logging.info(f"Tricks taken: {self.tricks_taken}")
+            logging.info(f"Old scores: {self.player_scores}")
             self.player_scores += round_scores
             logging.info(f"Scores are now: {self.player_scores}")
 
