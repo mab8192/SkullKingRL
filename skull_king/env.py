@@ -12,6 +12,7 @@ class SkullKingGame:
 
         self.n_players = n_manual + n_random + n_rl
         self.round = 0
+        self.done = False
         self.current_player = np.random.randint(0, self.n_players)  # Start with a random player
 
         # Init agents
@@ -28,6 +29,19 @@ class SkullKingGame:
         for _ in range(n_rl):
             self.players.append(RLAgent(pid))
             pid += 1
+
+        # History tracking
+        # [[player bids, tricks taken], [player bids, tricks taken]]
+        # e.g. [[[0, 0, 1, 0], [0, 0, 1, 0]], [[1, 1, 0, 0], [1, 0, 1, 0]], ...]
+        self.bid_states = []
+
+        # [round1, round2, round3, ...]
+        # rounds look like [trick1, trick2, trick3, ...]
+        # tricks look like [(state, action, reward), (state, action, reward), ...]
+        #   where state includes global game state and the player's internal state
+        # Overall structure looks like (2 player game example):
+        # - [[[(state, action, reward), (state, action, reward)]], [[(state, action, reward), (state, action, reward)],[(state, action, reward), (state, action, reward)]]]
+        self.action_states = []
 
         # Global game state
         # - player_bets: List[int]
@@ -155,7 +169,7 @@ class SkullKingGame:
         """
         round_scores = np.zeros(self.n_players)
         for i, player in enumerate(self.players):
-            round_scores[i] += player.compute_score(self.round)
+            round_scores[i] += player.compute_score(self.round, self.player_bets[i])
 
         round_scores += self.score_loot(self.loot13)
         round_scores += self.score_loot(self.loot14)
@@ -202,3 +216,14 @@ class SkullKingGame:
             logging.info(f"Scores are now: {self.player_scores}")
 
             self.cleanup_round()
+
+        self.done = True
+
+    def summarize(self):
+        """
+        Return data based on the previously played game.
+        """
+        if not self.done:
+            return None
+
+        
