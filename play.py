@@ -17,7 +17,6 @@ def main(args):
         nr = 4
 
     game = SkullKingGame(nm, nr)
-    game.reset()
     game.play_game()
 
 

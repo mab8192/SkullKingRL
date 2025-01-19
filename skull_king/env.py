@@ -2,6 +2,7 @@ import logging
 from typing import List
 import numpy as np
 from skull_king.agents import ManualAgent, RandomAgent, RLAgent, BaseAgent
+from skull_king.agents.rl_agent import ReplayMemory
 from skull_king.game import Deck, Trick, Hand, Loot
 
 
@@ -9,11 +10,12 @@ class SkullKingGame:
     def __init__(self, n_manual: int = 1, n_random: int = 3, n_rl: int = 0) -> None:
         super().__init__()
         self.deck = Deck()
+        self.deck.reset()
+        self.deck.shuffle()
 
         self.n_players = n_manual + n_random + n_rl
         self.round = 0
-        self.done = False
-        self.current_player = np.random.randint(0, self.n_players)  # Start with a random player
+        self.starting_player = np.random.randint(0, self.n_players)  # Start with a random player
 
         # Init agents
         self.players: List[BaseAgent] = []
@@ -26,8 +28,10 @@ class SkullKingGame:
             self.players.append(RandomAgent(pid))
             pid += 1
 
+        play_memory = ReplayMemory(100000)
+        bid_memory = ReplayMemory(100000)
         for _ in range(n_rl):
-            self.players.append(RLAgent(pid))
+            self.players.append(RLAgent(pid, play_memory=play_memory, bid_memory=bid_memory))
             pid += 1
 
         # History tracking
@@ -68,13 +72,15 @@ class SkullKingGame:
         self.loot13 = [-1, -1]  # Tracks which players are connected with loot id 13
         self.loot14 = [-1, -1]  # Tracks which players are connected with loot id 14
 
-        self.reset()
-
-    def reset(self):
+    def reset_game(self):
+        """
+            Resets the game to play again from scratch
+        """
         self.deck.reset()
         self.deck.shuffle()
         self.round = 0
-        self.current_player = np.random.randint(0, self.n_players)  # Start with a random player
+        self.done = False
+        self.starting_player = np.random.randint(0, self.n_players)  # Start with a random player
         self.player_bets = np.zeros(self.n_players)
         self.current_trick = Trick()
         self.player_scores = np.zeros(self.n_players)
@@ -86,25 +92,26 @@ class SkullKingGame:
     @property
     def state(self):
         return {
+            "current_round": self.round,
             "player_bets": self.player_bets,
             "current_trick": self.current_trick,
             "player_scores": self.player_scores,
             "tricks_taken": self.tricks_taken,
-            "cards_played": self.cards_played
+            "cards_played": self.cards_played,
+            "starting_player": self.starting_player
         }
 
     def play_trick(self):
         """
-        Starting with the current player, prompt each player to play a card for the current trick.
+        Starting with the starting player, prompt each player to play a card for the current trick.
         """
-        i = self.current_player
+        i = self.starting_player
         while True:
             cur_player: BaseAgent = self.players[i]
-            card = cur_player.play(self.state)
-            self.current_trick.add_card(i, card)
+            self.current_trick.add_card(i, cur_player.play(self.state))
 
             i = (i + 1) % self.n_players
-            if i == self.current_player: break
+            if i == self.starting_player: break
 
     def play_round(self):
         """
@@ -117,7 +124,7 @@ class SkullKingGame:
             hand.add_cards(self.deck.draw(self.round))
             player.assign_hand(hand)
 
-        logging.info(f"Player {self.current_player} will start the round.")
+        logging.info(f"Player {self.starting_player} will start the round.")
 
         # Collect player bids
         for i, player in enumerate(self.players):
@@ -127,25 +134,36 @@ class SkullKingGame:
         for _ in range(self.round):
             self.play_trick()
             logging.info(f"Final trick state: {self.current_trick}")
-            self.current_player = self.current_trick.get_winner()
+
+            winner_id = self.current_trick.get_winner()
 
             if not self.current_trick.kraken_played:
-                self.players[self.current_player].win_trick(self.current_trick)
-                self.tricks_taken[self.current_player] += 1  # current_player is now the winner of the current trick
+                logging.info(f"Player {winner_id} won the trick.")
+                for i, player in enumerate(self.players):
+                    if i == winner_id: player.win_trick(self.current_trick)
+                    else: player.lose_trick()
+                self.tricks_taken[winner_id] += 1  # current_player is now the winner of the current trick
+            else:
+                logging.info(f"Kraken played! No one wins the trick. Player {winner_id} will start next.")
+                # Everyone loses the trick when the kraken gets played
+                for i, player in enumerate(self.players):
+                    player.lose_trick()
 
-            # Check for loot and update assignments
+            # Check for loot and update assignments for the round
             for player_id, card in self.current_trick.cards:
                 if isinstance(card, Loot):
                     if card.id == 13:
                         self.loot13[0] = player_id
-                        self.loot13[1] = self.current_player
+                        self.loot13[1] = self.starting_player
                     elif card.id == 14:
                         self.loot14[0] = player_id
-                        self.loot14[1] = self.current_player
+                        self.loot14[1] = self.starting_player
 
+            # Reset trick
             self.current_trick = Trick()
 
-            logging.info(f"Player {self.current_player} won the trick.")
+            # Winner starts the next trick
+            self.starting_player = winner_id
 
     def score_loot(self, loot):
         """
@@ -181,14 +199,14 @@ class SkullKingGame:
         Clean up any intermediates created during the last round.
         """
         for player in self.players:
-            player.cleanup()
+            player.round_cleanup()
 
         # Shuffle the deck
-        self.deck.reset()  # This also resets all the cards
+        self.deck.reset()
         self.deck.shuffle()
 
         # Randomly choose a new starting player for next round
-        self.current_player = np.random.randint(0, self.n_players)
+        self.starting_player = np.random.randint(0, self.n_players)
 
         # Reset player bets
         self.player_bets = np.zeros(self.n_players)
@@ -196,8 +214,15 @@ class SkullKingGame:
         # Reset current trick
         self.current_trick = Trick()
 
+        # Reset played cards
+        self.cards_played = np.zeros(len(self.deck))
+
         # Reset tricks taken
         self.tricks_taken = np.zeros(self.n_players)
+
+        # Reset loot
+        self.loot13 = [-1, -1]
+        self.loot14 = [-1, -1]
 
     def play_game(self):
         """
@@ -213,17 +238,8 @@ class SkullKingGame:
             logging.info(f"Tricks taken: {self.tricks_taken}")
             logging.info(f"Old scores: {self.player_scores}")
             self.player_scores += round_scores
-            logging.info(f"Scores are now: {self.player_scores}")
+            logging.info(f"\nScores are now: {self.player_scores}\n")
 
             self.cleanup_round()
 
         self.done = True
-
-    def summarize(self):
-        """
-        Return data based on the previously played game.
-        """
-        if not self.done:
-            return None
-
-        

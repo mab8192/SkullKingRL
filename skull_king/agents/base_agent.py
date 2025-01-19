@@ -41,11 +41,16 @@ class BaseAgent:
         self.starting_hand = deepcopy(hand)  # Maintain a separate copy of the starting hand.
         self.hand = hand
 
-    def win_trick(self, trick: game.Trick):
+    def lose_trick(self) -> None:
+        # No-op for base agent
+        pass
+
+    def win_trick(self, trick: game.Trick) -> None:
         self.tricks.append(trick)
 
-    def cleanup(self):
+    def round_cleanup(self):
         """Cleanup intermediates between rounds"""
+        self.starting_hand = game.Hand()
         self.hand = game.Hand()
         self.tricks = []
 

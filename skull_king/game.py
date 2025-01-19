@@ -339,6 +339,7 @@ class Trick:
         self.pms_played = False  # pms = pirate mermaid skullking
         self.kraken_played = False
         self.white_whale_played = False
+        self.winner_id = None
 
     def __len__(self):
         return len(self.cards)
@@ -394,13 +395,14 @@ class Trick:
                         current_winning_card = card
                         current_winner = player_id
 
+            self.winner_id = current_winner
             return current_winner
 
         # No white whale was played, get winner as usual
 
         pirate_played = isinstance(current_winning_card, Pirate)
         mermaid_played = isinstance(current_winning_card, Mermaid)
-        sk_played = isinstance(current_winning_card, SkullKing)
+        skull_king_played = isinstance(current_winning_card, SkullKing)
 
         for player_id, card in self.cards[1:]:
             # Check if the current card beats the winning card
@@ -414,14 +416,14 @@ class Trick:
                 elif isinstance(card, Mermaid):
                     mermaid_played = True
                 elif isinstance(card, SkullKing):
-                    sk_played = True
+                    skull_king_played = True
 
                 if card > current_winning_card:
                     current_winner = player_id
                     current_winning_card = card
 
         # Special case, if all three PMS are played then the mermaid wins
-        if pirate_played and mermaid_played and sk_played:
+        if pirate_played and mermaid_played and skull_king_played:
             # Find the mermaid
             for player_id, card in self.cards:
                 if isinstance(card, Mermaid):
@@ -443,4 +445,5 @@ class Trick:
                 if isinstance(card, Pirate): count += 1
             current_winning_card.capture_pirates(count)
 
+        self.winner_id = current_winner
         return current_winner
