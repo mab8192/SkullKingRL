@@ -1,13 +1,10 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
+import os
 
-from skull_king.agents.rl_agent import ReplayMemory, BidNetwork, PlayNetwork
 from skull_king.env import SkullKingGame
 from skull_king.agents import RLAgent
 
 def train(args):
-    game = SkullKingGame(0, 4 - args.n_agents, args.n_agents)
+    game = SkullKingGame(n_manual=0, n_random=4 - args.n_agents, n_rl=args.n_agents)
 
     # Modified version of game.play_game to allow for training
     for i in range(args.num_episodes):
@@ -25,9 +22,10 @@ def train(args):
         game.reset_game()
 
     print("Saving networks")
+    os.makedirs("local", exist_ok=True)
     for i, player in enumerate(game.players):
         if isinstance(player, RLAgent):
-            player.save(f"player_{i}.torch")
+            player.save(f"local/player_{i}.torch")
 
     samples = player.memory.sample(5)
     for sample in samples:

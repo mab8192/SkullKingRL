@@ -36,7 +36,8 @@ class BidNetwork(nn.Module):
             nn.ReLU(),
             nn.Linear(128, 128),
             nn.ReLU(),
-            nn.Linear(128, 11)
+            nn.Linear(128, 11),
+            nn.Softmax(dim=-1)
         )
 
     def forward(self, x):
@@ -203,7 +204,7 @@ class RLAgent(BaseAgent):
 
     def get_epsilon(self) -> float:
         """Calculate current epsilon value for epsilon-greedy policy."""
-        eps_threshold = self.eps_end + (self.eps_start - self.eps_end) * math.exp(-1. * self.games_played / self.eps_decay)
+        eps_threshold = max(self.eps_end + (self.eps_start - self.eps_end) * math.exp(-1. * self.games_played / self.eps_decay), self.eps_end)
         return eps_threshold
 
     def get_obs(self, game_state: dict) -> torch.Tensor:
@@ -274,8 +275,8 @@ class RLAgent(BaseAgent):
         """Make a bid prediction based on the current player's hand."""
         obs = self.get_obs(game_state)
         bid_logits = self.bid_network(obs.unsqueeze(0))
-        masked_logits = bid_logits * torch.cat((torch.ones(game_state["current_round"] + 1), torch.zeros(10 - game_state["current_round"])))
-        # already softmaxed in-network
+        bid_mask = torch.cat((torch.ones(game_state["current_round"] + 1), torch.zeros(10 - game_state["current_round"])))
+        masked_logits = bid_logits.masked_fill(bid_mask == 0, float('-inf'))
         self.current_bid = masked_logits.argmax().item()
         return self.current_bid
 
@@ -297,7 +298,6 @@ class RLAgent(BaseAgent):
             logits: torch.Tensor = self.play_network(obs.unsqueeze(0))
 
             masked_logits = logits.masked_fill(legal_actions == 0, float('-inf'))
-            action_probs = logits * torch.tensor(legal_actions)
             action_probs = torch.softmax(masked_logits, dim=-1)
 
             if (action_probs.sum() > 0):

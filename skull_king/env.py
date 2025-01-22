@@ -7,7 +7,7 @@ from skull_king.game import Deck, Trick, Hand, Loot
 
 
 class SkullKingGame:
-    def __init__(self, n_manual: int = 1, n_random: int = 3, n_rl: int = 0) -> None:
+    def __init__(self, n_manual: int = 1, n_random: int = 3, n_irl: int = 0, n_rl: int = 0, checkpoint_filepath: str = None) -> None:
         super().__init__()
         self.deck = Deck()
         self.deck.reset()
@@ -28,10 +28,16 @@ class SkullKingGame:
             self.players.append(RandomAgent(pid))
             pid += 1
 
+        # TODO: Add IRL support
+
+        # Shared memory
         play_memory = ReplayMemory(100000)
         bid_memory = ReplayMemory(100000)
         for _ in range(n_rl):
-            self.players.append(RLAgent(pid, play_memory=play_memory, bid_memory=bid_memory))
+            agent = RLAgent(pid, play_memory=play_memory, bid_memory=bid_memory)
+            if (checkpoint_filepath is not None):
+                agent.load(checkpoint_filepath)
+            self.players.append(agent)
             pid += 1
 
         # History tracking
